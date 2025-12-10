@@ -3,10 +3,10 @@ import java.rmi.RemoteException;
 import java.util.List;
 
 // Interface para o Servidor
-public interface IWhatsUTServer extends Remote {
+public interface InterfaceServidor extends Remote {
     // Autenticação
     boolean registrar(String usuario, String senha) throws RemoteException;
-    boolean login(String usuario, String senha, IWhatsUTClient clientRef) throws RemoteException;
+    boolean login(String usuario, String senha, InterfaceCliente clientRef) throws RemoteException;
     void logout(String usuario) throws RemoteException;
 
     // Listas

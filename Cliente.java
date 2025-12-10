@@ -8,10 +8,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
 
-public class WhatsUTClient extends UnicastRemoteObject implements IWhatsUTClient {
+public class Cliente extends UnicastRemoteObject implements InterfaceCliente {
     private static volatile boolean logado = false;
     
-    protected WhatsUTClient() throws RemoteException { super(); }
+    protected Cliente() throws RemoteException { super(); }
 
     @Override
     public void receberMensagem(String remetente, String mensagem, boolean isPrivado) throws RemoteException {
@@ -85,8 +85,8 @@ public class WhatsUTClient extends UnicastRemoteObject implements IWhatsUTClient
             Registry registry = useSsl
                     ? LocateRegistry.getRegistry("localhost", 1099, new SslRMIClientSocketFactory())
                     : LocateRegistry.getRegistry("localhost", 1099);
-            IWhatsUTServer server = (IWhatsUTServer) registry.lookup("WhatsUTService");
-            WhatsUTClient clientCallback = new WhatsUTClient();
+            InterfaceServidor server = (InterfaceServidor) registry.lookup("WhatsUTService");
+            Cliente clientCallback = new Cliente();
 
             Scanner scanner = new Scanner(System.in);
             String meuUsuario = null;

@@ -24,13 +24,13 @@ class Grupo {
     }
 }
 
-public class WhatsUTServer extends UnicastRemoteObject implements IWhatsUTServer {
+public class Servidor extends UnicastRemoteObject implements InterfaceServidor {
     // Armazenamento em memória (Simulando Banco de Dados)
     private Map<String, String> usuariosCadastrados = new HashMap<>(); // User -> Hash Senha
-    private Map<String, IWhatsUTClient> usuariosOnline = new ConcurrentHashMap<>();
+    private Map<String, InterfaceCliente> usuariosOnline = new ConcurrentHashMap<>();
     private Map<String, Grupo> grupos = new ConcurrentHashMap<>();
 
-    protected WhatsUTServer() throws RemoteException { super(); }
+    protected Servidor() throws RemoteException { super(); }
 
     // --- Criptografia (SHA-256) ---
     private String hashSenha(String senha) {
@@ -54,7 +54,7 @@ public class WhatsUTServer extends UnicastRemoteObject implements IWhatsUTServer
     }
 
     @Override
-    public synchronized boolean login(String usuario, String senha, IWhatsUTClient clientRef) throws RemoteException {
+    public synchronized boolean login(String usuario, String senha, InterfaceCliente clientRef) throws RemoteException {
         String hashArmazenado = usuariosCadastrados.get(usuario);
         if (hashArmazenado != null && hashArmazenado.equals(hashSenha(senha))) {
             usuariosOnline.put(usuario, clientRef);
@@ -82,7 +82,7 @@ public class WhatsUTServer extends UnicastRemoteObject implements IWhatsUTServer
 
     @Override
     public void enviarMensagemPrivada(String remetente, String destinatario, String mensagem) throws RemoteException {
-        IWhatsUTClient dest = usuariosOnline.get(destinatario);
+        InterfaceCliente dest = usuariosOnline.get(destinatario);
         if (dest != null) {
             dest.receberMensagem(remetente, mensagem, true);
         }
@@ -90,7 +90,7 @@ public class WhatsUTServer extends UnicastRemoteObject implements IWhatsUTServer
 
     @Override
     public void enviarArquivo(String remetente, String destinatario, String nomeArquivo, byte[] dados) throws RemoteException {
-        IWhatsUTClient dest = usuariosOnline.get(destinatario);
+        InterfaceCliente dest = usuariosOnline.get(destinatario);
         if (dest != null) {
             dest.receberArquivo(remetente, nomeArquivo, dados);
         }
@@ -112,7 +112,7 @@ public class WhatsUTServer extends UnicastRemoteObject implements IWhatsUTServer
             if (!g.membros.contains(usuario)) {
                 g.pendentes.add(usuario);
                 // Notificar Admin
-                IWhatsUTClient adminRef = usuariosOnline.get(g.admin);
+                InterfaceCliente adminRef = usuariosOnline.get(g.admin);
                 if (adminRef != null) adminRef.notificar("Solicitacao de entrada no grupo " + nomeGrupo + ": " + usuario);
                 return true;
             }
@@ -126,7 +126,7 @@ public class WhatsUTServer extends UnicastRemoteObject implements IWhatsUTServer
         if (g != null && g.admin.equals(admin) && g.pendentes.contains(usuarioAprovado)) {
             g.pendentes.remove(usuarioAprovado);
             g.membros.add(usuarioAprovado);
-            IWhatsUTClient userRef = usuariosOnline.get(usuarioAprovado);
+            InterfaceCliente userRef = usuariosOnline.get(usuarioAprovado);
             if (userRef != null) userRef.notificar("Voce foi aceito no grupo " + nomeGrupo);
         }
     }
@@ -137,7 +137,7 @@ public class WhatsUTServer extends UnicastRemoteObject implements IWhatsUTServer
         if (g != null && g.membros.contains(remetente)) {
             for (String membro : g.membros) {
                 if (!membro.equals(remetente)) { // Não envia para si mesmo
-                    IWhatsUTClient dest = usuariosOnline.get(membro);
+                    InterfaceCliente dest = usuariosOnline.get(membro);
                     if (dest != null) {
                         try {
                             dest.receberMensagem("[" + nomeGrupo + "] " + remetente, mensagem, false);
@@ -170,7 +170,7 @@ public class WhatsUTServer extends UnicastRemoteObject implements IWhatsUTServer
         g.pendentes.remove(usuarioAlvo);
 
         // Notifica alvo se estiver online
-        IWhatsUTClient dest = usuariosOnline.get(usuarioAlvo);
+        InterfaceCliente dest = usuariosOnline.get(usuarioAlvo);
         if (dest != null) dest.notificar("Voce foi banido do grupo " + nomeGrupo);
 
         // Se não restarem membros, remove grupo
@@ -195,7 +195,7 @@ public class WhatsUTServer extends UnicastRemoteObject implements IWhatsUTServer
                     // Elege novo admin (o próximo da lista)
                     String novoAdmin = g.membros.get(0);
                     g.admin = novoAdmin;
-                    IWhatsUTClient dest = usuariosOnline.get(novoAdmin);
+                    InterfaceCliente dest = usuariosOnline.get(novoAdmin);
                     if (dest != null) dest.notificar("Voce e o novo ADMIN do grupo " + nomeGrupo);
                 }
             }
@@ -204,7 +204,7 @@ public class WhatsUTServer extends UnicastRemoteObject implements IWhatsUTServer
 
     public static void main(String[] args) {
         try {
-            IWhatsUTServer server = new WhatsUTServer();
+            InterfaceServidor server = new Servidor();
             boolean useSsl = Boolean.getBoolean("rmi.ssl");
 
             Registry registry;
