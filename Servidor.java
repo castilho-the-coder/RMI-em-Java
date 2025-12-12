@@ -84,6 +84,8 @@ public class Servidor extends UnicastRemoteObject implements InterfaceServidor {
     public void enviarMensagemPrivada(String remetente, String destinatario, String mensagem) throws RemoteException {
         InterfaceCliente dest = usuariosOnline.get(destinatario);
         if (dest != null) {
+            // INVOCA CALLBACK RMI - receberMensagem no cliente destino
+            // Finalidade: Entregar mensagem privada ao usuario remoto em tempo real
             dest.receberMensagem(remetente, mensagem, true);
         }
     }
@@ -92,6 +94,8 @@ public class Servidor extends UnicastRemoteObject implements InterfaceServidor {
     public void enviarArquivo(String remetente, String destinatario, String nomeArquivo, byte[] dados) throws RemoteException {
         InterfaceCliente dest = usuariosOnline.get(destinatario);
         if (dest != null) {
+            // INVOCA CALLBACK RMI - receberArquivo no cliente destino
+            // Finalidade: Rotear arquivo para usuario remoto que pode baixa-lo
             dest.receberArquivo(remetente, nomeArquivo, dados);
         }
     }
@@ -111,7 +115,8 @@ public class Servidor extends UnicastRemoteObject implements InterfaceServidor {
         if (g != null) {
             if (!g.membros.contains(usuario)) {
                 g.pendentes.add(usuario);
-                // Notificar Admin
+                // INVOCA CALLBACK RMI - notificar do admin
+                // Finalidade: Alertar o admin do grupo que existe solicitacao pendente
                 InterfaceCliente adminRef = usuariosOnline.get(g.admin);
                 if (adminRef != null) adminRef.notificar("Solicitacao de entrada no grupo " + nomeGrupo + ": " + usuario);
                 return true;
@@ -126,6 +131,8 @@ public class Servidor extends UnicastRemoteObject implements InterfaceServidor {
         if (g != null && g.admin.equals(admin) && g.pendentes.contains(usuarioAprovado)) {
             g.pendentes.remove(usuarioAprovado);
             g.membros.add(usuarioAprovado);
+            // INVOCA CALLBACK RMI - notificar do usuario aprovado
+            // Finalidade: Informar usuario que sua solicitacao foi aceita no grupo
             InterfaceCliente userRef = usuariosOnline.get(usuarioAprovado);
             if (userRef != null) userRef.notificar("Voce foi aceito no grupo " + nomeGrupo);
         }
@@ -140,6 +147,9 @@ public class Servidor extends UnicastRemoteObject implements InterfaceServidor {
                     InterfaceCliente dest = usuariosOnline.get(membro);
                     if (dest != null) {
                         try {
+                            // INVOCA CALLBACK RMI - receberMensagem em todos os membros do grupo
+                            // Finalidade: Distribuir mensagem de grupo para cada membro remoto
+                            // Flag false indica que eh mensagem de grupo, nao privada
                             dest.receberMensagem("[" + nomeGrupo + "] " + remetente, mensagem, false);
                         } catch (RemoteException e) {
                             // Cliente pode ter caído sem logout
@@ -169,7 +179,8 @@ public class Servidor extends UnicastRemoteObject implements InterfaceServidor {
         g.membros.remove(usuarioAlvo);
         g.pendentes.remove(usuarioAlvo);
 
-        // Notifica alvo se estiver online
+        // INVOCA CALLBACK RMI - notificar do usuario banido
+        // Finalidade: Informar usuario que foi banido do grupo
         InterfaceCliente dest = usuariosOnline.get(usuarioAlvo);
         if (dest != null) dest.notificar("Voce foi banido do grupo " + nomeGrupo);
 
@@ -195,6 +206,8 @@ public class Servidor extends UnicastRemoteObject implements InterfaceServidor {
                     // Elege novo admin (o próximo da lista)
                     String novoAdmin = g.membros.get(0);
                     g.admin = novoAdmin;
+                    // INVOCA CALLBACK RMI - notificar do novo admin
+                    // Finalidade: Informar novo admin sobre sua promocao
                     InterfaceCliente dest = usuariosOnline.get(novoAdmin);
                     if (dest != null) dest.notificar("Voce e o novo ADMIN do grupo " + nomeGrupo);
                 }

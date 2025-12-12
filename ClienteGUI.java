@@ -13,21 +13,6 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 
-/*
- * CLASSE CLIENTE COM SUPORTE A CALLBACKS RMI
- * 
- * ClienteGUI estende UnicastRemoteObject e implementa InterfaceCliente.
- * Isso torna esta instância um objeto remoto que pode ser invocado pelo servidor.
- * 
- * FLUXO DE CALLBACKS:
- * 1. Cliente faz login e passa (this) ao servidor via server.login(usuario, senha, this)
- * 2. Servidor armazena uma referência remota a este cliente em um Map
- * 3. Quando há mensagens/notificações, servidor chama métodos deste cliente:
- *    - receberMensagem() → mensagens privadas e de grupo
- *    - receberArquivo() → arquivos enviados
- *    - notificar() → notificações de sistema
- * 4. Esses métodos atualizam a UI via SwingUtilities.invokeLater()
- */
 public class ClienteGUI extends UnicastRemoteObject implements InterfaceCliente {
     private final InterfaceServidor server;
     private String usuarioLogado;
@@ -67,24 +52,15 @@ public class ClienteGUI extends UnicastRemoteObject implements InterfaceCliente 
         this.server = server;
     }
     
-    /*
-     * CALLBACK: receberMensagem()
+    /**
+     * CALLBACK RMI - receberMensagem
+     * Finalidade: Receber mensagens (privadas ou em grupo) invocadas pelo servidor
+     * via RMI de forma remota quando outro usuario envia uma mensagem.
      * 
-     * Este método é invocado REMOTAMENTE pelo servidor (RMI callback).
-     * Quando um usuário envia uma mensagem privada ou de grupo, o servidor
-     * busca a referência remota deste cliente e chama este método.
-     * 
-     * FLUXO:
-     * 1. Usuario1 chama server.enviarMensagemPrivada(usuario1, usuario2, msg)
-     * 2. Servidor valida, salva e então invoca:
-     *    clientesConectados.get(usuario2).receberMensagem(usuario1, msg, true)
-     * 3. Este método é executado remotamente no cliente de usuario2
-     * 4. A mensagem é exibida em tempo real na UI do usuario2
-     * 
-     * PARAMETROS:
-     * - remetente: quem enviou a mensagem
-     * - mensagem: conteúdo da mensagem
-     * - isPrivado: true=privada, false=grupo
+     * Fluxo:
+     * 1. Usuario A envia mensagem via enviarMensagemPrivada()
+     * 2. Servidor valida e chama receberMensagem() do Usuario B (CALLBACK)
+     * 3. A GUI do Usuario B atualiza em tempo real
      */
     @Override
     public void receberMensagem(String remetente, String mensagem, boolean isPrivado) throws RemoteException {
@@ -96,26 +72,15 @@ public class ClienteGUI extends UnicastRemoteObject implements InterfaceCliente 
         }
     }
     
-    /*
-     * CALLBACK: receberArquivo()
+    /**
+     * CALLBACK RMI - receberArquivo
+     * Finalidade: Receber arquivos enviados por outros usuarios via RMI.
+     * O servidor roteia o arquivo para o cliente destino e invoca este callback.
      * 
-     * Este método é invocado REMOTAMENTE pelo servidor (RMI callback).
-     * Quando um arquivo é enviado via RMI, o servidor chama este método
-     * para entregar o arquivo ao cliente destinatário.
-     * 
-     * FLUXO:
-     * 1. Usuario1 seleciona arquivo e chama:
-     *    server.enviarArquivo(usuario1, usuario2, "foto.jpg", bytes)
-     * 2. Servidor valida e invoca callback:
-     *    clientesConectados.get(usuario2).receberArquivo(usuario1, nome, bytes)
-     * 3. Este método recebe o arquivo remotamente
-     * 4. Salva em disco em pasta: downloads_<usuario>/
-     * 5. Exibe notificação no chat do usuario2
-     * 
-     * PARAMETROS:
-     * - remetente: usuário que enviou o arquivo
-     * - nomeArquivo: nome do arquivo
-     * - dados: conteúdo do arquivo em bytes (serializável via RMI)
+     * Fluxo:
+     * 1. Usuario A envia arquivo via enviarArquivo()
+     * 2. Servidor busca Cliente B conectado e invoca receberArquivo() (CALLBACK)
+     * 3. Usuario B salva o arquivo no diretorio "downloads_<usuario>"
      */
     @Override
     public void receberArquivo(String remetente, String nomeArquivo, byte[] dados) throws RemoteException {
@@ -123,28 +88,17 @@ public class ClienteGUI extends UnicastRemoteObject implements InterfaceCliente 
         salvarArquivo(nomeArquivo, dados);
     }
     
-    /*
-     * CALLBACK: notificar()
+    /**
+     * CALLBACK RMI - notificar
+     * Finalidade: Receber notificacoes de sistema do servidor (aprovacao em grupo,
+     * usuario entrou/saiu, etc). Invocado remotamente pelo servidor quando eventos
+     * de sistema ocorrem.
      * 
-     * Este método é invocado REMOTAMENTE pelo servidor (RMI callback).
-     * Notificações de sistema (aprovações, banimentos, saídas, etc) são
-     * entregues ao cliente via este callback.
-     * 
-     * FLUXO:
-     * 1. Evento no servidor: usuario X foi aprovado no grupo Y
-     * 2. Servidor invoca callback:
-     *    clientesConectados.get(usuarioX).notificar("Aprovado no grupo Y")
-     * 3. Este método recebe a notificação remotamente
-     * 4. Exibe a notificação na aba atualmente ativa do cliente
-     * 5. Usa deduplicação para evitar mensagens duplicadas em rápida sucessão
-     * 
-     * DEDUPLICAÇÃO:
-     * - Armazena lastSystemMessage e lastSystemMessageAt
-     * - Ignora mensagens idênticas recebidas < 1.5s atrás
-     * - Evita UI poluída com notificações repetidas de eventos múltiplos
-     * 
-     * PARAMETRO:
-     * - mensagem: texto da notificação de sistema
+     * Fluxo:
+     * 1. Evento ocorre no servidor (ex: usuario entrou em grupo)
+     * 2. Servidor invoca notificar() de todos os membros do grupo (CALLBACK)
+     * 3. Deduplicacao evita mensagens repetidas em < 1.5s
+     * 4. Notificacao aparece na aba atualmente selecionada
      */
     @Override
     public void notificar(String mensagem) throws RemoteException {
@@ -618,32 +572,6 @@ public class ClienteGUI extends UnicastRemoteObject implements InterfaceCliente 
         return inputPanel;
     }
     
-    /*
-     * REGISTRO DO CLIENTE COMO CALLBACK
-     * 
-     * Este método faz login no servidor e REGISTRA este cliente para
-     * receber callbacks (mensagens e notificações).
-     * 
-     * FLUXO DE REGISTRO:
-     * 1. Usuário clica "Login"
-     * 2. Cliente chama: server.login(usuario, senha, this)
-     *    - Passa (this) = referência remota deste cliente ao servidor
-     * 3. Servidor valida credenciais
-     * 4. Se válido, servidor armazena em ConcurrentHashMap:
-     *    clientesConectados.put(usuario, this)
-     *    ^--- agora servidor tem referência para enviar callbacks
-     * 5. Servidor retorna true
-     * 6. Cliente inicia timer de sincronização (listas de usuários/grupos)
-     * 7. A partir de agora, este cliente recebe:
-     *    - Callback receberMensagem() quando há mensagens
-     *    - Callback notificar() quando há eventos de sistema
-     *    - Callback receberArquivo() quando recebe arquivos
-     * 
-     * IMPORTANTE:
-     * - ClienteGUI estende UnicastRemoteObject → pode ser referência remota
-     * - O "this" passado é um stub que o servidor pode usar para callbacks
-     * - Sem passar "this", servidor não teria como enviar callbacks
-     */
     private void fazerLogin() {
         String usuario = loginUsuario.getText().trim();
         String senha = new String(loginSenha.getPassword());
