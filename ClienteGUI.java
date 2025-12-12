@@ -400,6 +400,10 @@ public class ClienteGUI extends UnicastRemoteObject implements InterfaceCliente 
         sairGrupoBtn.addActionListener(e -> sairDoGrupo());
         gruposToolbar.add(sairGrupoBtn);
         
+        JButton banirBtn = new JButton("Banir");
+        banirBtn.addActionListener(e -> dialogBanirMembro());
+        gruposToolbar.add(banirBtn);
+        
         gruposPanel.add(gruposToolbar, BorderLayout.NORTH);
         gruposPanel.add(new JScrollPane(gruposLista), BorderLayout.CENTER);
         tabbedPane.addTab("Grupos", gruposPanel);
@@ -810,6 +814,50 @@ public class ClienteGUI extends UnicastRemoteObject implements InterfaceCliente 
                 }
             } catch (RemoteException ex) {
                 JOptionPane.showMessageDialog(frame, "Erro", "Erro", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+    
+    private void dialogBanirMembro() {
+        if (chatAtualGrupo == null) {
+            JOptionPane.showMessageDialog(frame, "Selecione um grupo primeiro", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        // Verifica se o usuario eh admin do grupo
+        try {
+            if (!server.ehAdminDoGrupo(usuarioLogado, chatAtualGrupo)) {
+                JOptionPane.showMessageDialog(frame, "Apenas o admin do grupo pode banir membros", "Acesso Negado", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+        } catch (RemoteException ex) {
+            JOptionPane.showMessageDialog(frame, "Erro ao verificar permissoes", "Erro", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        // Pede o nome do usuario a ser banido
+        String usuario = JOptionPane.showInputDialog(frame, 
+            "Digite o nome do usuario a ser banido do grupo '" + chatAtualGrupo + "':",
+            "Banir Membro", JOptionPane.QUESTION_MESSAGE);
+        
+        if (usuario != null && !usuario.trim().isEmpty()) {
+            usuario = usuario.trim();
+            if (usuario.equals(usuarioLogado)) {
+                JOptionPane.showMessageDialog(frame, "Voce nao pode se banir a si mesmo. Use 'Sair' em vez disso.", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            
+            int confirm = JOptionPane.showConfirmDialog(frame, 
+                "Tem certeza que quer banir '" + usuario + "' do grupo '" + chatAtualGrupo + "'?",
+                "Confirmar Banimento", JOptionPane.YES_NO_OPTION);
+            
+            if (confirm == JOptionPane.YES_OPTION) {
+                try {
+                    server.banirUsuarioDoGrupo(usuarioLogado, usuario, chatAtualGrupo);
+                    appendChatGrupo("[INFO] Usuario '" + usuario + "' foi banido do grupo");
+                } catch (RemoteException ex) {
+                    JOptionPane.showMessageDialog(frame, "Erro ao banir usuario", "Erro", JOptionPane.ERROR_MESSAGE);
+                }
             }
         }
     }
