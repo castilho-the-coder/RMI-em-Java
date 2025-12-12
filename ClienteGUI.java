@@ -52,16 +52,8 @@ public class ClienteGUI extends UnicastRemoteObject implements InterfaceCliente 
         this.server = server;
     }
     
-    /**
-     * CALLBACK RMI - receberMensagem
-     * Finalidade: Receber mensagens (privadas ou em grupo) invocadas pelo servidor
-     * via RMI de forma remota quando outro usuario envia uma mensagem.
-     * 
-     * Fluxo:
-     * 1. Usuario A envia mensagem via enviarMensagemPrivada()
-     * 2. Servidor valida e chama receberMensagem() do Usuario B (CALLBACK)
-     * 3. A GUI do Usuario B atualiza em tempo real
-     */
+    // CALLBACK RMI - receberMensagem
+    // Usuario A envia mensagem via enviarMensagemPrivada(), servidor valida e chama receberMensagem() do Usuario B (CALLBACK), GUI do Usuario B atualiza em tempo real
     @Override
     public void receberMensagem(String remetente, String mensagem, boolean isPrivado) throws RemoteException {
         String prefixo = isPrivado ? "[PRIVADO] " : "[GRUPO] ";
@@ -72,34 +64,17 @@ public class ClienteGUI extends UnicastRemoteObject implements InterfaceCliente 
         }
     }
     
-    /**
-     * CALLBACK RMI - receberArquivo
-     * Finalidade: Receber arquivos enviados por outros usuarios via RMI.
-     * O servidor roteia o arquivo para o cliente destino e invoca este callback.
-     * 
-     * Fluxo:
-     * 1. Usuario A envia arquivo via enviarArquivo()
-     * 2. Servidor busca Cliente B conectado e invoca receberArquivo() (CALLBACK)
-     * 3. Usuario B salva o arquivo no diretorio "downloads_<usuario>"
-     */
+    // CALLBACK RMI - receberArquivo
+    // Usuario A envia arquivo via enviarArquivo(), servidor busca Cliente B conectado e invoca receberArquivo() (CALLBACK), usuario B salva o arquivo no diretorio "downloads_<usuario>"
     @Override
     public void receberArquivo(String remetente, String nomeArquivo, byte[] dados) throws RemoteException {
         appendChatPrivado("[ARQUIVO] Recebido '" + nomeArquivo + "' de " + remetente);
         salvarArquivo(nomeArquivo, dados);
     }
     
-    /**
-     * CALLBACK RMI - notificar
-     * Finalidade: Receber notificacoes de sistema do servidor (aprovacao em grupo,
-     * usuario entrou/saiu, etc). Invocado remotamente pelo servidor quando eventos
-     * de sistema ocorrem.
-     * 
-     * Fluxo:
-     * 1. Evento ocorre no servidor (ex: usuario entrou em grupo)
-     * 2. Servidor invoca notificar() de todos os membros do grupo (CALLBACK)
-     * 3. Deduplicacao evita mensagens repetidas em < 1.5s
-     * 4. Notificacao aparece na aba atualmente selecionada
-     */
+    // CALLBACK RMI - notificar
+    // Evento ocorre no servidor (ex: usuario entrou em grupo), servidor invoca notificar() de todos os membros do grupo (CALLBACK), notificacao aparece na aba atualmente selecionada
+
     @Override
     public void notificar(String mensagem) throws RemoteException {
         String msg = "[SISTEMA] " + mensagem;
