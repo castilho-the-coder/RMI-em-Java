@@ -201,6 +201,24 @@ public class Servidor extends UnicastRemoteObject implements InterfaceServidor {
             }
         }
     }
+    
+    @Override
+    public synchronized Map<String, List<String>> obterSolicitacoesPorGrupo(String usuarioAdmin) throws RemoteException {
+        Map<String, List<String>> resultado = new HashMap<>();
+        for (Map.Entry<String, Grupo> entry : grupos.entrySet()) {
+            Grupo grupo = entry.getValue();
+            if (grupo.admin.equals(usuarioAdmin) && !grupo.pendentes.isEmpty()) {
+                resultado.put(grupo.nome, new ArrayList<>(grupo.pendentes));
+            }
+        }
+        return resultado;
+    }
+    
+    @Override
+    public synchronized boolean ehAdminDoGrupo(String usuario, String grupo) throws RemoteException {
+        Grupo g = grupos.get(grupo);
+        return g != null && g.admin.equals(usuario);
+    }
 
     public static void main(String[] args) {
         try {
